@@ -7,6 +7,10 @@
 #include <zephyr/drivers/uart.h>
 #include <string.h>
 #include "NuMicro.h"
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/dt-bindings/clock/numaker_clock.h>
+#endif
 #ifdef CONFIG_PINCTRL
 #include <zephyr/drivers/pinctrl.h>
 #endif
@@ -16,7 +20,12 @@
 struct uart_numaker_config {
 	UART_T *uart;
 	uint32_t id_rst;
-	uint32_t id_clk;
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+    const struct device *clk_dev;
+#endif
+	uint32_t clk_modidx;
+    uint32_t clk_src;
+    uint32_t clk_div;
 #ifdef CONFIG_PINCTRL
 	const struct pinctrl_dev_config *pincfg;
 #endif
@@ -155,12 +164,35 @@ static int uart_numaker_init(const struct device *dev)
 
 	SYS_UnlockReg();
 
-	/* Enable UART module clock */
-	CLK_EnableModuleClock(config->id_clk);
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+    /* Equivalent to CLK_EnableModuleClock() */
+    err = clock_control_on(config->clk_dev,
+                           (clock_control_subsys_t) config->clk_modidx);
+    if (err != 0) {
+        SYS_LockReg();
+        return err;
+    }
 
-  /* Select UART0 module clock source as HIRC and UART0 module clock divider as 1 */
-  CLK_SetModuleClock(config->id_clk, CLK_CLKSEL1_UART0SEL_HIRC, CLK_CLKDIV0_UART0(1));
-               
+    /* Equivalent to CLK_SetModuleClock() */
+    struct numaker_pcc_module_clock_config mod_clk_cfg = {
+        .clk_src    = config->clk_src,
+        .clk_div    = config->clk_div,
+    };
+    err = clock_control_configure(config->clk_dev,
+                                  (clock_control_subsys_t) config->clk_modidx,
+                                  &mod_clk_cfg);
+    if (err != 0) {
+        SYS_LockReg();
+        return err;
+    }
+#else
+    /* Enable UART module clock */
+    CLK_EnableModuleClock(config->clk_modidx);
+
+    /* Select UART module clock source/divider */
+    CLK_SetModuleClock(config->clk_modidx, config->clk_src, config->clk_div);
+#endif
+
 	/* Set pinctrl for UART0 RXD and TXD */
     /* Set multi-function pins for UART0 RXD and TXD */
 #ifdef CONFIG_PINCTRL
@@ -325,6 +357,18 @@ static const struct uart_driver_api uart_numaker_driver_api = {
 };
 #endif  /* CONFIG_UART_INTERRUPT_DRIVEN */
 
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+#define NUMAKER_DT_INST_CLOCK_INIT(inst)                            \
+    .clk_dev    = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),         \
+    .clk_modidx = DT_INST_CLOCKS_CELL(inst, clock_module_index),    \
+    .clk_src    = DT_INST_CLOCKS_CELL(inst, clock_source),          \
+    .clk_div    = DT_INST_CLOCKS_CELL(inst, clock_divider),
+#else
+#define NUMAKER_DT_INST_CLOCK_INIT(inst)                            \
+    .clk_modidx = DT_INST_CLOCKS_CELL(inst, clock_module_index),    \
+    .clk_src    = DT_INST_CLOCKS_CELL(inst, clock_source),          \
+    .clk_div    = DT_INST_CLOCKS_CELL(inst, clock_divider),
+#endif
 
 #ifdef CONFIG_PINCTRL
 #define PINCTRL_DEFINE(n) PINCTRL_DT_INST_DEFINE(n);
@@ -340,7 +384,7 @@ static const struct uart_driver_api uart_numaker_driver_api = {
 static const struct uart_numaker_config uart_numaker_cfg_##inst = {	\
 	.uart = (UART_T *)DT_INST_REG_ADDR(inst),			\
 	.id_rst = DT_INST_PROP(inst, reset),					\
-	.id_clk = DT_INST_PROP(inst, clk_module),					\
+    NUMAKER_DT_INST_CLOCK_INIT(inst)                        \
     PINCTRL_INIT(inst)							\
 };									\
 									\
