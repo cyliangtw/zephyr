@@ -13,6 +13,10 @@
 
 #include "gpio_utils.h"
 #include "NuMicro.h"
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/dt-bindings/clock/numaker_clock.h>
+#endif
 
 #include <zephyr/logging/log.h>
 
@@ -27,6 +31,10 @@ struct gpio_numaker_config {
 	uint32_t reg;
     uint32_t gpa_base;
     uint32_t size;
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+    const struct device *clk_dev;
+#endif
+    uint32_t clk_modidx;
 };
 
 struct gpio_numaker_data {
@@ -51,13 +59,6 @@ static int gpio_numaker_configure(const struct device *dev,
 		return -EINVAL;
 	}
 
-#if 1 // Temporary before CLK control ready
-    /* Enable all GPIO clock */
-    CLK->AHBCLK0 |= CLK_AHBCLK0_GPACKEN_Msk | CLK_AHBCLK0_GPBCKEN_Msk | CLK_AHBCLK0_GPCCKEN_Msk | CLK_AHBCLK0_GPDCKEN_Msk |
-                    CLK_AHBCLK0_GPECKEN_Msk | CLK_AHBCLK0_GPFCKEN_Msk | CLK_AHBCLK0_GPGCKEN_Msk | CLK_AHBCLK0_GPHCKEN_Msk;
-    CLK->AHBCLK1 |= CLK_AHBCLK1_GPICKEN_Msk | CLK_AHBCLK1_GPJCKEN_Msk;
-#endif
-    
 	/* Configure GPIO direction */
 
 	switch (flags & GPIO_DIR_MASK) {
@@ -226,6 +227,35 @@ static void gpio_numaker_isr(const struct device *dev)
 	gpio_fire_callbacks(&data->callbacks, dev, int_status);
 }
 
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+#define NUMAKER_DT_INST_CLOCK_INIT(n)                           \
+    .clk_dev    = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),        \
+    .clk_modidx = DT_INST_CLOCKS_CELL(n, clock_module_index),
+#else
+#define NUMAKER_DT_INST_CLOCK_INIT(n)                           \
+    .clk_modidx = DT_INST_CLOCKS_CELL(n, clock_module_index),
+#endif
+
+#ifdef CONFIG_CLOCK_CONTROL_NUMAKER_PCC
+#define GPIO_NUMAKER_CLOCK_INIT(n)                  \
+    do {                                            \
+        const struct gpio_numaker_config *config = dev->config;                 \
+        int err = clock_control_on(config->clk_dev, \
+                               (clock_control_subsys_t) config->clk_modidx);    \
+        if (err != 0) {                             \
+            return err;                             \
+        }                                           \
+    } while (0)
+#else
+#define GPIO_NUMAKER_CLOCK_INIT(n)                  \
+    do {                                            \
+        const struct gpio_numaker_config *config = dev->config;                 \
+        SYS_UnlockReg();                            \
+        CLK_EnableModuleClock(config->clk_modidx);  \
+        SYS_LockReg();                              \
+    } while (0)
+#endif
+
 #define GPIO_NUMAKER_IRQ_INIT(n)						\
 	do {								\
 		IRQ_CONNECT(DT_INST_IRQN(n),				\
@@ -245,12 +275,14 @@ static void gpio_numaker_isr(const struct device *dev)
 		.reg = DT_INST_REG_ADDR(n),				       \
         .gpa_base = DT_REG_ADDR(DT_NODELABEL(gpioa)),    \
         .size = DT_REG_SIZE(DT_NODELABEL(gpioa)),         \
+        NUMAKER_DT_INST_CLOCK_INIT(n)               \
 	};								       \
 									       \
 	static struct gpio_numaker_data gpio_numaker_data##n;			       \
 									       \
 	static int gpio_numaker_init##n(const struct device *dev)	\
 	{								\
+        GPIO_NUMAKER_CLOCK_INIT(n); \
 		IF_ENABLED(DT_INST_IRQ_HAS_IDX(n, 0),			\
 			(GPIO_NUMAKER_IRQ_INIT(n);))			\
 		return 0;						\
