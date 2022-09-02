@@ -17,8 +17,6 @@ struct numaker_scc_config {
     uint32_t    clk_base;
     int         hxt;
     int         lxt;
-    int         hirc;
-    int         lirc;
     int         hirc48;
     uint32_t    clk_pclkdiv;
     uint32_t    core_clock;
@@ -101,12 +99,6 @@ static int numaker_scc_init(const struct device *dev)
 #if DT_NODE_HAS_PROP(DT_NODELABEL(scc), lxt)
     LOG_OSC_SW(LXT, cfg->lxt);
 #endif
-#if DT_NODE_HAS_PROP(DT_NODELABEL(scc), hirc)
-    LOG_OSC_SW(HIRC, cfg->hirc);
-#endif
-#if DT_NODE_HAS_PROP(DT_NODELABEL(scc), lirc)
-    LOG_OSC_SW(LIRC, cfg->lirc);
-#endif
 #if DT_NODE_HAS_PROP(DT_NODELABEL(scc), hirc48)
     LOG_OSC_SW(HIRC48, cfg->hirc48);
 #endif
@@ -120,9 +112,10 @@ static int numaker_scc_init(const struct device *dev)
     SYS_UnlockReg();
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(scc), hxt)
-    /* Enable/disable HXT on request */
+    /* Enable/disable 4~24 MHz external crystal oscillator (HXT) */
     if (cfg->hxt == NUMAKER_SCC_CLKSW_ENABLE) {
         CLK_EnableXtalRC(CLK_PWRCTL_HXTEN_Msk);
+        /* Wait for HXT clock ready */
         CLK_WaitClockReady(CLK_STATUS_HXTSTB_Msk);
     } else if (cfg->hxt == NUMAKER_SCC_CLKSW_DISABLE) {
         CLK_DisableXtalRC(CLK_PWRCTL_HXTEN_Msk);
@@ -130,39 +123,31 @@ static int numaker_scc_init(const struct device *dev)
 #endif
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(scc), lxt)
-    /* Enable/disable LXT on request */
+    /* Enable/disable 32.768 kHz low-speed external crystal oscillator (LXT) */
     if (cfg->lxt == NUMAKER_SCC_CLKSW_ENABLE) {
         CLK_EnableXtalRC(CLK_PWRCTL_LXTEN_Msk);
+        /* Wait for LXT clock ready */
         CLK_WaitClockReady(CLK_STATUS_LXTSTB_Msk);
     } else if (cfg->lxt == NUMAKER_SCC_CLKSW_DISABLE) {
         CLK_DisableXtalRC(CLK_PWRCTL_LXTEN_Msk);
     }
 #endif
 
-#if DT_NODE_HAS_PROP(DT_NODELABEL(scc), hirc)
-    /* Enable/disable HIRC on request */
-    if (cfg->hirc == NUMAKER_SCC_CLKSW_ENABLE) {
-        CLK_EnableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
-        CLK_WaitClockReady(CLK_STATUS_HIRCSTB_Msk);
-    } else if (cfg->hirc == NUMAKER_SCC_CLKSW_DISABLE) {
-        CLK_DisableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
-    }
-#endif
+    /* Enable 12 MHz high-speed internal RC oscillator (HIRC) */
+    CLK_EnableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
+    /* Wait for HIRC clock ready */
+    CLK_WaitClockReady(CLK_STATUS_HIRCSTB_Msk);
 
-#if DT_NODE_HAS_PROP(DT_NODELABEL(scc), lirc)
-    /* Enable/disable LIRC on request */
-    if (cfg->lirc == NUMAKER_SCC_CLKSW_ENABLE) {
-        CLK_EnableXtalRC(CLK_PWRCTL_LIRCEN_Msk);
-        CLK_WaitClockReady(CLK_STATUS_LIRCSTB_Msk);
-    } else if (cfg->lirc == NUMAKER_SCC_CLKSW_DISABLE) {
-        CLK_DisableXtalRC(CLK_PWRCTL_LIRCEN_Msk);
-    }
-#endif
+    /* Enable 10 KHz low-speed internal RC oscillator (LIRC) */
+    CLK_EnableXtalRC(CLK_PWRCTL_LIRCEN_Msk);
+    /* Wait for LIRC clock ready */
+    CLK_WaitClockReady(CLK_STATUS_LIRCSTB_Msk);
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(scc), hirc48)
-    /* Enable/disable HIRC48 on request */
+    /* Enable/disable 48 MHz high-speed internal RC oscillator (HIRC48) */
     if (cfg->hirc48 == NUMAKER_SCC_CLKSW_ENABLE) {
         CLK_EnableXtalRC(CLK_PWRCTL_HIRC48EN_Msk);
+        /* Wait for HIRC48 clock ready */
         CLK_WaitClockReady(CLK_STATUS_HIRC48STB_Msk);
     } else if (cfg->hirc48 == NUMAKER_SCC_CLKSW_DISABLE) {
         CLK_DisableXtalRC(CLK_PWRCTL_HIRC48EN_Msk);
@@ -194,8 +179,6 @@ static int numaker_scc_init(const struct device *dev)
         .clk_base       = DT_INST_REG_ADDR(inst),                       \
         .hxt            = DT_INST_ENUM_IDX_OR(inst, hxt, NUMAKER_SCC_CLKSW_UNTOUCHED),      \
         .lxt            = DT_INST_ENUM_IDX_OR(inst, lxt, NUMAKER_SCC_CLKSW_UNTOUCHED),      \
-        .hirc           = DT_INST_ENUM_IDX_OR(inst, hirc, NUMAKER_SCC_CLKSW_UNTOUCHED),     \
-        .lirc           = DT_INST_ENUM_IDX_OR(inst, lirc, NUMAKER_SCC_CLKSW_UNTOUCHED),     \
         .hirc48         = DT_INST_ENUM_IDX_OR(inst, hirc48, NUMAKER_SCC_CLKSW_UNTOUCHED),   \
         .clk_pclkdiv    = DT_INST_PROP_OR(inst, clk_pclkdiv, 0),        \
         .core_clock     = DT_INST_PROP_OR(inst, core_clock, 0),         \

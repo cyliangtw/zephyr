@@ -31,26 +31,6 @@ properties:
         - "enable"
         - "disable"
 
-    hirc:
-      type: string
-      required: false
-      description: |
-        Enable/disable 12 MHz high-speed internal RC oscillator (HIRC)
-      enum:
-        - "untouched"
-        - "enable"
-        - "disable"
-
-    lirc:
-      type: string
-      required: false
-      description: |
-        Enable/disable 10 KHz low-speed internal rc oscillator (LIRC)
-      enum:
-        - "untouched"
-        - "enable"
-        - "disable"
-
     hirc48:
       type: string
       required: false
