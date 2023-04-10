@@ -3,7 +3,7 @@
 
 description: Nuvoton NuMaker CAN-FD controller, using Bosch M_CAN IP
 
-compatible: "nuvoton,numaker"
+compatible: "nuvoton,numaker-canfd"
 
 include: ["can-fd-controller.yaml", "pinctrl-device.yaml"]
 

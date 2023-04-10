@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT nuvoton_numaker
+#define DT_DRV_COMPAT nuvoton_numaker_canfd
 
 #include <soc.h>
 #include <zephyr/drivers/can.h>

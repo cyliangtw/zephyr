@@ -515,7 +515,7 @@
 			tx-buffer-elements = <3>;
 
 			canfd0: canfd@40020000 {
-				compatible = "nuvoton,numaker";
+				compatible = "nuvoton,numaker-canfd";
 				reg = <0x40020000 0x200>, <0x40020200 0x1800>;
 				reg-names = "m_can", "message_ram";
 				interrupts = <112 0>, <113 0>;
@@ -530,7 +530,7 @@
 			};
 
 			canfd1: canfd@40024000 {
-				compatible = "nuvoton,numaker";
+				compatible = "nuvoton,numaker-canfd";
 				reg = <0x40024000 0x200>, <0x40024200 0x1800>;
 				reg-names = "m_can", "message_ram";
 				interrupts = <114 0>, <115 0>;
@@ -545,7 +545,7 @@
 			};
 
 			canfd2: canfd@40028000 {
-				compatible = "nuvoton,numaker";
+				compatible = "nuvoton,numaker-canfd";
 				reg = <0x40028000 0x200>, <0x40028200 0x1800>;
 				reg-names = "m_can", "message_ram";
 				interrupts = <120 0>, <121 0>;
@@ -560,7 +560,7 @@
 			};
 
 			canfd3: canfd@4002c000 {
-				compatible = "nuvoton,numaker";
+				compatible = "nuvoton,numaker-canfd";
 				reg = <0x4002c000 0x200>, <0x4002c200 0x1800>;
 				reg-names = "m_can", "message_ram";
 				interrupts = <122 0>, <123 0>;

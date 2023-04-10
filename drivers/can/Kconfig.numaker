@@ -3,7 +3,7 @@
 # Copyright (c) 2022 Nuvoton Technology Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-DT_COMPAT_NUMAKER := nuvoton,numaker
+DT_COMPAT_NUMAKER := nuvoton,numaker-canfd
 
 config CAN_NUMAKER
 	bool "Nuvoton NuMaker CAN-FD driver"
